@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+  <html>
+    <head>
+      <style>
+        button {
+          height: 50px;
+          width: 140px;
+          outline: none;
+          margin: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <button id="enableDisable"></button>
+      <br><br>
+      <p>What websites do you want to limit your usage of? In order to remove a url from the list, type it in again.</p><br>
+      <form id="frm1" action="/action_page.php">
+      Enter URL: <input type="text" name="url"><br>
+      </form> 
+      <button id="getUrls"></button>
+      <div id="errorMessage"></div>
+      <br>
+      <p id="demo"></p><br>
+      <div>
+      <p>Set your time limit!</p><br>
+      </div>
+      <div id="buttonDiv">
+      </div>
+    </body>
+    <script src="options.js"></script>
+  </html>
