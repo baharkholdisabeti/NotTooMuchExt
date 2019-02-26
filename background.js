@@ -1,65 +1,91 @@
 // used for getting urls from options
 var allUrlsString="";
 var url = "url not set";
-var finalTimer = "";
-var yesNo=true;
-var timeLeftInSeconds=0;
-
-// set end of timer certain amount of time away from now
-function startTimer(duration, display) {      // duration is in seconds, display is document.querySelector('#time')
-    var timer = duration, minutes, seconds;
-    setInterval(function () {
-        timeLeftInSeconds = timer;
-        minutes = parseInt(timer / 60, 10)
-        seconds = parseInt(timer % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-        finalTimer= minutes+" : "+seconds;
-
-        if (--timer < 0) {
-            timer = 0;
-        }
-    }, 1000);
-}
-
+var countdown = "Timer not set";
+var seconds=100000;
+var justRemoved = false;
+var oldDate = new Date();
+var lastSec=100000; // for reseting the day
 
 chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
   if(message.method == "getTimerMessage"){
-    sendResponse(finalTimer);
+    sendResponse(countdown);
     return true;
   }
 });
+
+// find out if it's a new day (to know whether or not to reset timer)
+function isSameDay() {
+    return (new Date()).toDateString() == oldDate.toDateString();
+}
 
 // gets timer value set in options
 function setTimerAmount(){
     chrome.storage.local.get('key', function(data) {
         try{
-	var temp = data.key;
-        if (temp == "10 minutes"){
-          startTimer(10*60, document.querySelector('#time'));
+	  var temp = data.key;
+          	if (temp == "10 minutes"){ 
+	    		seconds=600;
+			lastSec=600;
+	    		setTimer();
+	  	}
+	  	else if (temp == "30 minutes"){ 
+	    		seconds=1800;
+			lastSec=1800;
+	    		setTimer();
+	  	}
+	  	else if (temp == "1 hour"){ 
+	    		seconds=3600;
+			lastSec=3600;
+	    		setTimer();
+	  	}
+	  	else if (temp == "2 hours"){ 
+	    		seconds=7200;
+			lastSec=7200;
+	    		setTimer();
+	  	}
+          	else if (temp == "timer not set"){
+	    		seconds=100000;
+			lastSec=100000;
+            		countdown= "Timer not set";
+          	}
+          chrome.storage.local.set({key: ""}, function() {
+            console.log('timer is cleared');
+          })
         }
-        else if (temp == "30 minutes"){
-          startTimer(30*60, document.querySelector('#time'));
-        }
-        else if (temp == "1 hour"){
-	  startTimer(60*60, document.querySelector('#time'));
-        }
-        else if (temp == "2 hours"){
-	  startTimer(120*60, document.querySelector('#time'));
-        }
-        else if (temp == "timer not set"){
-          finalTimer= "timer not set";
-        }
-        chrome.storage.local.set({key: ""}, function() {
-          console.log('timer is cleared');
-        })
-        } 
         catch (error){
           console.log("error");
         }
     });
+}
+
+
+// sets countdown clock
+function setTimer(){
+  var hours       = Math.floor(seconds/3600);
+  var minutesLeft = Math.floor((seconds) - (hours*3600));
+  var minutes     = Math.floor(minutesLeft/60);
+  var remainingSeconds = seconds % 60;
+  function pad(n) {
+    return (n < 10 ? "0" + n : n);
+  }
+  countdown = "Time left: "+pad(hours) + ":" + pad(minutes) + ":" + pad(remainingSeconds);
+  if (seconds == 0) {
+    clearInterval(countdownTimer);
+  } else {
+    seconds--;
+  }
+}
+
+// time's up popup
+function confirmPopup(){
+	if (confirm("Your time's up! Click ok to close the tab or cancel to snooze for 10 more minutes.")) {
+    		remove();
+		justRemoved=true;
+	} else {
+    		seconds=600;
+	    	setTimer();
+	}
 }
 
 // gets list of blocked urls from options
@@ -86,65 +112,31 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
   }
 });
 
+// main!!!
 var x = setInterval(function() {
-    // gets timer and url values set in options
-    setTimerAmount();
-    setUrl();
-    if (timeLeftInSeconds != 0){
-    													
-    var urls = [];
-    // splits allUrlsString into each url and adds to storeUrls array
-    var startPos = 0;
-    for (var x=0; x<allUrlsString.length;x++){
-      if (x==allUrlsString.length-2){
-        urls.push(allUrlsString.substring(startPos));
-        break;
-      }
-      else if (allUrlsString.substring(x,x+2)==", "){
-        urls.push(allUrlsString.substring(startPos, x));
-        startPos=x+2;                                                               
-      }
-    }
-    //var urls = JSON.parse(storeUrls);
-    activeTab();
-
-    // if active tab is not specified website, the end date will increase like
-    // a normal clock to simulate a paused timer
-    // rightUrl stores whether url matches one of the specified urls
-    var rightUrl = false;
-    for (var x=0; x<urls.length; x++){
-      if (url.indexOf(urls[x])>-1) {
-        rightUrl=true;
-        x=100;
-      }
-    }
-    if (rightUrl==false){
-      startTimer(timeLeftInSeconds,document.querySelector('#time'));
-    }
-
-    // times up, yo
-    if (rightUrl == true && yesNo==true && timeLeftInSeconds==0)
-    {
-      //alert("Time's up! Close tab now?");
-      if (confirm("Time's up! Close tab now?")) {
-        yesNo = remove();
-        startTimer(2,document.querySelector('#time'));
-      } 
-      else {
-        alert("Snoozed for 10 minutes");
-        startTimer(600,document.querySelector('#time'));
-      }
-    }
-    else if (yesNo==false){
-      yesNo=true;
-    }
-
-    // updates timer element on popup
-    finalTimer = "Time remaining: "+timeLeftInSeconds;
-    }
-    else {
-      finalTimer = "timer not set";
-    }
+	setUrl();
+	activeTab();
+	setTimerAmount();
+	var line = allUrlsString.split(", ");
+	for (var y=0;y<line.length;y++){
+	    if (url.indexOf(line[y])>-1){
+		if (seconds==0 && justRemoved==false){
+			confirmPopup();
+		}
+		else if (justRemoved==true){
+			justRemoved=false;
+		}
+		if (seconds!=100000){
+			setTimer();
+		}
+		y=10000;
+	    }
+	}
+	// check if it's a new day
+	if (!sameDay()){
+		oldDate=new Date();
+		seconds=lastSec;
+	}
 }, 1000);
 
 // finds active tab url
