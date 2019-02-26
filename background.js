@@ -133,7 +133,7 @@ var x = setInterval(function() {
 	    }
 	}
 	// check if it's a new day
-	if (!sameDay()){
+	if (!isSameDay()){
 		oldDate=new Date();
 		seconds=lastSec;
 	}
